@@ -1,0 +1,67 @@
+service: ts-lambda-api
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  lambdaHashingVersion: '20201221'
+  region: us-east-1
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${sls:stage}
+  httpApi:
+    cors: true
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: 'arn:aws:dynamodb:${aws:region}:*:table/${self:provider.environment.DYNAMODB_TABLE}'
+
+functions:
+  create:
+    handler: brews/create.create
+    events:
+      - httpApi:
+          path: /brews
+          method: post
+  list:
+    handler: brews/list.list
+    events:
+      - httpApi:
+          path: /brews
+          method: get
+
+  get:
+    handler: brews/get.get
+    events:
+      - httpApi:
+          path: /brews/{id}
+          method: get
+
+  update:
+    handler: brews/update.update
+    events:
+      - httpApi:
+          path: /brews/{id}
+          method: put
+
+resources:
+  Resources:
+    BrewsDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
